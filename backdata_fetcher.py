@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 import pytz
+import json
+from datetime import datetime
+from pathlib import Path
+
 
 class BackDataFetcher:
     """
     A class to fetch backtest data.
     """
 
-    def __init__(self, future_api, cmc_api, save_folder = 'backtest_data'):
+    def __init__(self, future_api, cmc_api, save_folder = 'BackTest/back_data'):
         """
         Initializes the BackDataFetcher with the necessary APIs and save folder.
         :param future_api: An instance of the futures API to fetch historical data.
@@ -67,9 +71,28 @@ class BackDataFetcher:
         symbols = self.cmc_api.get_top_cryptos(limit=topk)
         return self.fetch_data_symbols(symbols, limit, buffer)
 
-
-
-
+    def fetch_topk_and_save(self, topk: int = 10, limit: int = 10000, buffer: int = 1000, save_path: str = None) -> dict:
+        """
+        Fetches historical data for the top k cryptocurrencies and saves it to a specified path.
+        :param topk: The number of top cryptocurrencies to fetch data for.
+        :param limit: The maximum number of data points to fetch for the shortest timeframe.
+        :param buffer: Additional data points to fetch for longer timeframes to ensure sufficient data.
+        :param save_path: The path where the fetched data will be saved. If None, uses the default save folder.
+        :return: A dictionary containing historical data for the top k cryptocurrencies across different timeframes.
+        """
+        if save_path is None:
+            save_path = self.save_folder
+        all_data = self.fetch_topk_data(topk, limit, buffer)
+        
+        now = datetime.now(self.timezone).strftime("%Y%m%d_%H%M")
+        filename = f"{save_path}/top_{topk}_data_{now}.json"
+        
+        Path(save_path).mkdir(parents=True, exist_ok=True)
+        with open(filename, 'w') as file:
+            json.dump(all_data, file)
+        
+        print(f"Data saved to {filename}")
+        return all_data
 
 if __name__ == "__main__":
     # Example usage
@@ -79,5 +102,5 @@ if __name__ == "__main__":
     cmc_api = CoinMarketCapAPI()
     fetcher = BackDataFetcher(future_api, cmc_api)
 
-    data = fetcher.fetch_topk_data(topk=10, limit=10, buffer=1)
-    print(data.keys())  
+    data = fetcher.fetch_topk_and_save(topk=10, limit=10000, buffer=1000)
+    print(data.keys())
