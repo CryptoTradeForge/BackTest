@@ -6,15 +6,16 @@ class BackDataFetcher:
     A class to fetch backtest data.
     """
 
-    def __init__(self, future_api, top_cryptos_api, save_folder = 'backtest_data'):
+    def __init__(self, future_api, cmc_api, save_folder = 'backtest_data'):
         """
-        Initializes the BackDataFetcher with a future API and a top cryptocurrencies API.
-        :param future_api: An instance of the future API to fetch historical data.
-        :param top_cryptos_api: An instance of the top cryptocurrencies API to fetch top symbols.
+        Initializes the BackDataFetcher with the necessary APIs and save folder.
+        :param future_api: An instance of the futures API to fetch historical data.
+        :param cmc_api: An instance of the CoinMarketCap API to fetch top cryptocurrencies.
         :param save_folder: The folder where the fetched data will be saved.
         """
+        
         self.future_api = future_api
-        self.top_cryptos_api = top_cryptos_api
+        self.cmc_api = cmc_api
         self.save_folder = save_folder
         self.timezone = pytz.timezone("Asia/Taipei")
 
@@ -52,9 +53,8 @@ class BackDataFetcher:
                 all_data[symbol] = self.fetch_data(symbol, limit, buffer)
             except Exception as e:
                 print(f"Error fetching data for {symbol}: {e}")
+                self.cmc_api.add_problematic_coin(symbol)
         return all_data
-
-
 
     def fetch_topk_data(self, topk: int = 10, limit: int = 10000, buffer: int = 1000) -> dict:
         """
@@ -64,7 +64,7 @@ class BackDataFetcher:
         :param buffer: Additional data points to fetch for longer timeframes to ensure sufficient data.
         :return: A dictionary containing historical data for the top k cryptocurrencies across different timeframes.
         """
-        symbols = self.top_cryptos_api.get_top_cryptos(limit=topk)
+        symbols = self.cmc_api.get_top_cryptos(limit=topk)
         return self.fetch_data_symbols(symbols, limit, buffer)
 
 
@@ -76,8 +76,8 @@ if __name__ == "__main__":
     from CryptoAPI.futures.binance_api import BinanceFutures
     from CryptoAPI.cmc_api import CoinMarketCapAPI
     future_api = BinanceFutures()
-    top_cryptos_api = CoinMarketCapAPI()
-    fetcher = BackDataFetcher(future_api, top_cryptos_api)
+    cmc_api = CoinMarketCapAPI()
+    fetcher = BackDataFetcher(future_api, cmc_api)
 
     data = fetcher.fetch_topk_data(topk=10, limit=10, buffer=1)
     print(data.keys())  
