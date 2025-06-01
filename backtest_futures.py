@@ -65,6 +65,7 @@ class BackTestFutures:
         }
         '''
         
+        self.now = None # 用來記錄當前時間，回測時會更新
         self.opening_positions = []
         
     # -------------------- Futures Trading Methods --------------------
@@ -93,17 +94,13 @@ class BackTestFutures:
         if position_type not in ["LONG", "SHORT"]:
             raise ValueError("position_type must be 'LONG' or 'SHORT'")
         
-        timestamp = self.data["timestamp"] / 1000 # timestamp 是毫秒級別，要轉換為秒級別
-        dt = datetime.fromtimestamp(timestamp, self.timezone)
-        entry_time = dt.strftime("%Y-%m-%d %H:%M:%S")
-        
         # 模擬開倉
         self.opening_positions.append({
             "symbol": symbol,
             "position_type": position_type,
             "leverage": leverage,
             "amount": amount,
-            "entry_time": entry_time,
+            "entry_time": self.now,
             "entry_price": price,
             "stop_loss_price": stop_loss_price,
             "take_profit_price": take_profit_price
@@ -142,11 +139,6 @@ class BackTestFutures:
         # 模擬平倉
         exit_price = price if price is not None else self.get_price(symbol)
         
-        timestamp = self.data["timestamp"] / 1000
-        dt = datetime.fromtimestamp(timestamp, self.timezone)
-        exit_time = dt.strftime("%Y-%m-%d %H:%M:%S")
-        
-        
         pnl = (exit_price - position["entry_price"]) * (position["amount"] / position["entry_price"])
         
         pnl = pnl if position["position_type"] == "LONG" else -pnl  # 如果是 SHORT 倉位，PnL 需要反向計算
@@ -162,7 +154,7 @@ class BackTestFutures:
                 position_type, 
                 position["entry_time"], 
                 position["entry_price"], 
-                exit_time, 
+                self.now, 
                 exit_price, 
                 exit_reason, 
                 position["amount"], 
@@ -243,6 +235,10 @@ class BackTestFutures:
         
         # 更新資料
         self.data = data
+        
+        timestamp = self.data["timestamp"] / 1000 # timestamp 是毫秒級別，要轉換為秒級別
+        dt = datetime.fromtimestamp(timestamp, self.timezone)
+        self.now = dt.strftime("%Y-%m-%d %H:%M:%S")
     
     def check_stop_loss_take_profit(self):
         """
@@ -251,7 +247,7 @@ class BackTestFutures:
         for position in self.opening_positions:
             
             # 如果 position 剛開倉，則不檢查止盈/止損/爆倉
-            if position["entry_time"] == self.data["timestamp"]:
+            if position["entry_time"] == self.now:
                 continue
             
             symbol = position["symbol"]
@@ -260,26 +256,29 @@ class BackTestFutures:
             high = self.data[symbol]["high"]
             low = self.data[symbol]["low"]
             
-            if position_type == "LONG":
-                if position["stop_loss_price"] is not None and low <= position["stop_loss_price"]:
-                    self.close_position(symbol, position_type, price=position["stop_loss_price"], exit_reason="stop_loss")
-                elif position["take_profit_price"] is not None and high >= position["take_profit_price"]:
-                    self.close_position(symbol, position_type, price=position["take_profit_price"], exit_reason="take_profit")
-            elif position_type == "SHORT":
-                if position["stop_loss_price"] is not None and high >= position["stop_loss_price"]:
-                    self.close_position(symbol, position_type, price=position["stop_loss_price"], exit_reason="stop_loss")
-                elif position["take_profit_price"] is not None and low <= position["take_profit_price"]:
-                    self.close_position(symbol, position_type, price=position["take_profit_price"], exit_reason="take_profit")
-            
             # 檢查爆倉
             if position_type == "LONG":
+                
+                # 檢查爆倉
                 liquidation_price = position["entry_price"] * (1 - 1 / position["leverage"])
                 if low <= liquidation_price:
                     self.close_position(symbol, position_type, price=liquidation_price, exit_reason="liquidation")
+                    
+                # 檢查止盈/止損
+                elif position["stop_loss_price"] is not None and low <= position["stop_loss_price"]:
+                    self.close_position(symbol, position_type, price=position["stop_loss_price"], exit_reason="stop_loss")
+                elif position["take_profit_price"] is not None and high >= position["take_profit_price"]:
+                    self.close_position(symbol, position_type, price=position["take_profit_price"], exit_reason="take_profit")
+
             elif position_type == "SHORT":
+                
+                # 檢查爆倉
                 liquidation_price = position["entry_price"] * (1 + 1 / position["leverage"])
                 if high >= liquidation_price:
                     self.close_position(symbol, position_type, price=liquidation_price, exit_reason="liquidation")
-                
-            
-            
+                    
+                # 檢查止盈/止損
+                elif position["stop_loss_price"] is not None and high >= position["stop_loss_price"]:
+                    self.close_position(symbol, position_type, price=position["stop_loss_price"], exit_reason="stop_loss")
+                elif position["take_profit_price"] is not None and low <= position["take_profit_price"]:
+                    self.close_position(symbol, position_type, price=position["take_profit_price"], exit_reason="take_profit")
