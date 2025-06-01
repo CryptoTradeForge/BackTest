@@ -4,6 +4,8 @@
 from typing import Optional, List, Dict, Union, Any
 from pathlib import Path
 import csv
+import pytz
+from datetime import datetime
 
 class BackTestFutures:
     
@@ -20,6 +22,7 @@ class BackTestFutures:
             profit_record_path (str): 儲存利潤記錄的路徑
         """
         self.balance = initial_balance
+        self.timezone = pytz.timezone("Asia/Taipei")
         self.show_info - False  # 是否顯示交易資訊
         
         # 儲存路徑： "{profit_record_folder}/profits_{i}.csv"
@@ -41,8 +44,8 @@ class BackTestFutures:
         # clean profit_rec_path and add header
         with open(self.profit_record_path, 'w', newline='') as f:
             writer = csv.writer(f)
-            # writer.writerow(["symbol", "type", "order_time", "entry_time", "entry_price", "exit_time", "exit_price", "amount", "leverage", "reason", "pnl", "pnl_pct", "win/loss"])
-            writer.writerow(["symbol", "type", "entry_time", "entry_price", "exit_time", "exit_price", "exit_reason", "amount", "leverage", "pnl", "pnl_pct", "win/loss"])
+            # writer.writerow(["symbol", "position_type", "order_time", "entry_time", "entry_price", "exit_time", "exit_price", "amount", "leverage", "reason", "pnl", "pnl_pct", "win/loss"])
+            writer.writerow(["symbol", "position_type", "entry_time", "entry_price", "exit_time", "exit_price", "exit_reason", "amount", "leverage", "pnl", "pnl_pct", "win/loss"])
         
         self.data = None # 開始回測時要先 update 資料
         '''
@@ -90,12 +93,17 @@ class BackTestFutures:
         if position_type not in ["LONG", "SHORT"]:
             raise ValueError("position_type must be 'LONG' or 'SHORT'")
         
+        timestamp = self.data["timestamp"] / 1000 # timestamp 是毫秒級別，要轉換為秒級別
+        dt = datetime.fromtimestamp(timestamp, self.timezone)
+        entry_time = dt.strftime("%Y-%m-%d %H:%M:%S")
+        
         # 模擬開倉
         self.opening_positions.append({
             "symbol": symbol,
             "position_type": position_type,
             "leverage": leverage,
             "amount": amount,
+            "entry_time": entry_time,
             "entry_price": price,
             "stop_loss_price": stop_loss_price,
             "take_profit_price": take_profit_price
@@ -132,6 +140,11 @@ class BackTestFutures:
         # 模擬平倉
         exit_price = price if price is not None else self.get_price(symbol)
         
+        timestamp = self.data["timestamp"] / 1000
+        dt = datetime.fromtimestamp(timestamp, self.timezone)
+        exit_time = dt.strftime("%Y-%m-%d %H:%M:%S")
+        
+        
         pnl = (exit_price - position["entry_price"]) * (position["amount"] / position["leverage"])
         
         pnl = pnl if position["position_type"] == "LONG" else -pnl  # 如果是 SHORT 倉位，PnL 需要反向計算
@@ -143,15 +156,17 @@ class BackTestFutures:
         with open(self.profit_record_path, 'a', newline='') as f:
             writer = csv.writer(f)
             writer.writerow([
-                position["symbol"],
-                position["position_type"],
-                position["entry_price"],
-                exit_price,
-                exit_reason,
-                position["amount"],
-                position["leverage"],
-                pnl,
-                pnl_pct,
+                symbol, 
+                position_type, 
+                position["entry_time"], 
+                position["entry_price"], 
+                exit_time, 
+                exit_price, 
+                exit_reason, 
+                position["amount"], 
+                position["leverage"], 
+                pnl, 
+                pnl_pct, 
                 "win" if pnl > 0 else "loss"
             ])
         
