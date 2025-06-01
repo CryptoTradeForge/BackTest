@@ -227,13 +227,17 @@ class BackTestFutures:
     # -------------------- Backtesting Methods --------------------
     def update_data(self, data: Dict[str, Any]) -> None:
         """
-        更新回測資料
+        檢查止盈/止損/爆倉是否觸發，並更新回測資料。
         
         Args:
             data (dict): 回測資料，格式參見 self.data 的說明
         """
+        
+        # 先檢查止盈/止損/爆倉是否觸發
+        self.check_stop_loss_take_profit()
+        
+        # 更新資料
         self.data = data
-    
     
     def check_stop_loss_take_profit(self):
         """
