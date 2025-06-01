@@ -22,8 +22,9 @@ class BackTestFutures:
             profit_record_path (str): 儲存利潤記錄的路徑
         """
         self.balance = initial_balance
+        self.using_balance = 0
         self.timezone = pytz.timezone("Asia/Taipei")
-        self.show_info - False  # 是否顯示交易資訊
+        self.show_info = False  # 是否顯示交易資訊
         
         # 儲存路徑： "{profit_record_folder}/profits_{i}.csv"
         # 如果編號 i 的檔案已存在，則會自動增加編號
@@ -83,11 +84,10 @@ class BackTestFutures:
         """
         
         # 確認餘額是否足夠
-        if self.balance < amount:
+        if self.balance - self.using_balance < amount / leverage:
             if self.show_info:
                 print(f"餘額不足，無法開 {position_type} 倉，交易對: {symbol}, 需要金額: {amount} USDT, 當前餘額: {self.balance} USDT")
             return
-        
         
         price = self.get_price(symbol)
         if position_type not in ["LONG", "SHORT"]:
@@ -109,11 +109,13 @@ class BackTestFutures:
             "take_profit_price": take_profit_price
         })
         
-        # 更新 balance
-        self.balance -= amount
+        # 更新 using balance
+        self.using_balance += amount / leverage
         
         if self.show_info:
             print(f"開 {position_type} 倉成功，交易對: {symbol}, 槓桿: {leverage}, 金額: {amount} USDT, 價格: {price}")
+            print(f"當前餘額: {self.balance} USDT")
+            print(f"當前使用餘額: {self.using_balance} USDT")
         
     
     def close_position(self, symbol: str, position_type: str, price: Optional[float] = None, 
@@ -145,12 +147,12 @@ class BackTestFutures:
         exit_time = dt.strftime("%Y-%m-%d %H:%M:%S")
         
         
-        pnl = (exit_price - position["entry_price"]) * (position["amount"] / position["leverage"])
+        pnl = (exit_price - position["entry_price"]) * (position["amount"] / position["entry_price"])
         
         pnl = pnl if position["position_type"] == "LONG" else -pnl  # 如果是 SHORT 倉位，PnL 需要反向計算
         pnl -= position["amount"] * 0.001 # 手續費
         
-        pnl_pct = pnl / (position["entry_price"] * (position["amount"] / position["leverage"])) * 100
+        pnl_pct = pnl / (position["amount"] / position["leverage"]) * 100
         
         # 記錄平倉資訊
         with open(self.profit_record_path, 'a', newline='') as f:
@@ -174,9 +176,12 @@ class BackTestFutures:
         
         # 更新餘額
         self.balance += pnl
+        self.using_balance -= position["amount"] / position["leverage"]
         
         if self.show_info:
             print(f"平 {position_type} 倉成功，交易對: {symbol}, 平倉價格: {exit_price}, PnL: {pnl}, PnL%: {pnl_pct}%")
+            print(f"當前餘額: {self.balance} USDT")
+        print(f"當前使用餘額: {self.using_balance} USDT")
     
     def get_positions(self, symbol: Optional[str] = None) -> List[Dict[str, Any]]:
         """
@@ -244,6 +249,11 @@ class BackTestFutures:
         檢查所有開倉的止損和止盈以及爆倉是否觸發，若觸發則平倉。
         """
         for position in self.opening_positions:
+            
+            # 如果 position 剛開倉，則不檢查止盈/止損/爆倉
+            if position["entry_time"] == self.data["timestamp"]:
+                continue
+            
             symbol = position["symbol"]
             position_type = position["position_type"]
             

@@ -23,6 +23,23 @@ class BackDataFetcher:
         self.save_folder = save_folder
         self.timezone = pytz.timezone("Asia/Taipei")
 
+    def get_historical_data_and_check(self, symbol: str, interval: str, limit: int):
+        
+        print(f"---------- Fetching {symbol} [{interval}] with limit {limit} ----------")
+        
+        data = self.future_api.get_historical_data(symbol=symbol, interval=interval, limit=limit, show=True)
+        
+        
+        # if not data:
+        #     raise ValueError(f"No data found for {symbol} at interval {interval} with limit {limit}.")
+        
+        if len(set([d[0] for d in data])) < limit:
+            raise ValueError(f"Insufficient data points for {symbol} at interval {interval}. Expected {limit}, got {len(data)}.")
+        
+        
+        
+        return data
+    
     
     def fetch_data(self, symbol: str, limit: int = 10000, buffer: int = 1000) -> dict:
         """
@@ -32,13 +49,17 @@ class BackDataFetcher:
         :param buffer: Additional data points to fetch for longer timeframes to ensure sufficient data.
         :return: A dictionary containing historical data for the symbol across different timeframes.
         """
+        
+        print(f"============================== Fetching {symbol} ==============================")
+        
         data = {
-            '5m': self.future_api.get_historical_data(symbol=symbol, interval='5m', limit=limit),
-            '15m': self.future_api.get_historical_data(symbol=symbol, interval='15m', limit=limit // 3 + buffer + 5),
-            '1h': self.future_api.get_historical_data(symbol=symbol, interval='1h', limit=limit // 12 + buffer + 5),
-            '4h': self.future_api.get_historical_data(symbol=symbol, interval='4h', limit=limit // 48 + buffer + 5),
-            '1d': self.future_api.get_historical_data(symbol=symbol, interval='1d', limit=limit // 288 + buffer + 5)
+            '5m': self.get_historical_data_and_check(symbol=symbol, interval='5m', limit=limit),
+            '15m': self.get_historical_data_and_check(symbol=symbol, interval='15m', limit=limit // 3 + buffer + 5),
+            '1h': self.get_historical_data_and_check(symbol=symbol, interval='1h', limit=limit // 12 + buffer + 5),
+            '4h': self.get_historical_data_and_check(symbol=symbol, interval='4h', limit=limit // 48 + buffer + 5),
+            '1d': self.get_historical_data_and_check(symbol=symbol, interval='1d', limit=limit // 288 + buffer + 5)
         }
+        
         return data
 
 
@@ -85,7 +106,7 @@ class BackDataFetcher:
         all_data = self.fetch_topk_data(topk, limit, buffer)
         
         now = datetime.now(self.timezone).strftime("%Y%m%d_%H%M")
-        filename = f"{save_path}/top_{topk}_data_{now}.json"
+        filename = f"{save_path}/top_{topk}_{limit}_{now}.json"
         
         Path(save_path).mkdir(parents=True, exist_ok=True)
         with open(filename, 'w') as file:
@@ -102,5 +123,5 @@ if __name__ == "__main__":
     cmc_api = CoinMarketCapAPI()
     fetcher = BackDataFetcher(future_api, cmc_api)
 
-    data = fetcher.fetch_topk_and_save(topk=10, limit=10, buffer=1)
+    data = fetcher.fetch_topk_and_save(topk=10, limit=10000, buffer=500)
     print(data.keys())

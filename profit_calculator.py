@@ -46,10 +46,10 @@ class ProfitCalculator:
         total_trades = len(profits)
         
         # 多單數量
-        long_trades = len([p for p in profits_detail if p["type"] == "long"])
+        long_trades = len([p for p in profits_detail if p["position_type"] == "LONG"])
         
         # 空單數量
-        short_trades = len([p for p in profits_detail if p["type"] == "short"])
+        short_trades = len([p for p in profits_detail if p["position_type"] == "SHORT"])
         
         # 多空比例
         long_short_ratio = long_trades / short_trades if short_trades > 0 else 0
@@ -146,7 +146,7 @@ class ProfitCalculator:
         
         # 取得檔案名稱中的數字部分，並找到最大的數字
         latest_file = max(files, key=lambda x: int(x.split('_')[-1].split('.')[0]))
-        return os.path.join(profit_record_folder, latest_file)
+        return latest_file if os.path.isfile(latest_file) else None
         
     
     

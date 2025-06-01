@@ -66,9 +66,9 @@ class BackDataAcquisition:
                 # the last data is the current data
                 if timeframe == self.min_timeframe and final_timestamp_idx_before_time_line >= 0:
                     current_data[symbol] = {
-                        "open": timeframe_data[final_timestamp_idx_before_time_line][1],
-                        "high": timeframe_data[final_timestamp_idx_before_time_line][2],
-                        "low": timeframe_data[final_timestamp_idx_before_time_line][3],
+                        "open": float(timeframe_data[final_timestamp_idx_before_time_line][1]),
+                        "high": float(timeframe_data[final_timestamp_idx_before_time_line][2]),
+                        "low": float(timeframe_data[final_timestamp_idx_before_time_line][3]),
                         # 其他暫時用不到 (有需要的話可以再加上)
                     }
                 
