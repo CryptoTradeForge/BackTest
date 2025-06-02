@@ -53,11 +53,11 @@ class BackDataFetcher:
         print(f"============================== Fetching {symbol} ==============================")
         
         data = {
-            '5m': self.get_historical_data_and_check(symbol=symbol, interval='5m', limit=limit),
+            # '5m': self.get_historical_data_and_check(symbol=symbol, interval='5m', limit=limit + buffer + 5),
             '15m': self.get_historical_data_and_check(symbol=symbol, interval='15m', limit=limit // 3 + buffer + 5),
             '1h': self.get_historical_data_and_check(symbol=symbol, interval='1h', limit=limit // 12 + buffer + 5),
-            '4h': self.get_historical_data_and_check(symbol=symbol, interval='4h', limit=limit // 48 + buffer + 5),
-            '1d': self.get_historical_data_and_check(symbol=symbol, interval='1d', limit=limit // 288 + buffer + 5)
+            # '4h': self.get_historical_data_and_check(symbol=symbol, interval='4h', limit=limit // 48 + buffer + 5),
+            # '1d': self.get_historical_data_and_check(symbol=symbol, interval='1d', limit=limit // 288 + buffer + 5)
         }
         
         return data
@@ -123,5 +123,5 @@ if __name__ == "__main__":
     cmc_api = CoinMarketCapAPI()
     fetcher = BackDataFetcher(future_api, cmc_api)
 
-    data = fetcher.fetch_topk_and_save(topk=10, limit=10000, buffer=500)
+    data = fetcher.fetch_topk_and_save(topk=30, limit=51840, buffer=500)
     print(data.keys())

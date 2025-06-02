@@ -27,18 +27,7 @@ class ProfitCalculator:
         plt.show()
     
     
-    def culculate_profit(self, profit_record_path: str = None, profit_record_folder: str = "BackTest/profit_record"):
-        
-        # 如果 profit_record_path 已經指定，則直接使用它
-        # 否則則使用預設的 profit_record_folder
-        # 命名規則： "{profit_record_folder}/profits_{i}.csv"
-        # 故優先取 i 最大的檔案
-        if not profit_record_path:
-            profit_record_path = self._get_latest_profit_record_path(profit_record_folder)
-            
-        with open(profit_record_path, 'r') as f:
-            profits_detail = list(csv.DictReader(f))
-        
+    def culculate_profit(self, profits_detail, show_plot: bool = True):
         # 取得所有收益
         profits = [float(p["pnl"]) for p in profits_detail]
         
@@ -102,8 +91,9 @@ class ProfitCalculator:
         for i in profits:
             cumsum.append(cumsum[-1] + i)
         
-        self.plot_cumsum(cumsum)
-        self.plot_all_profits(profits)
+        if show_plot:
+            self.plot_cumsum(cumsum)
+            self.plot_all_profits(profits)
         
         return {
             "total_trades": total_trades,
@@ -123,6 +113,40 @@ class ProfitCalculator:
             "max_single_loss": round(max_single_loss, 3),
             "max_accumulated_drawdown": round(max_accumulated_drawdown, 3),
         }
+    
+    
+    def culculate_profit_path(self, profit_record_path: str = None, profit_record_folder: str = "BackTest/profit_record"):
+        
+        # 如果 profit_record_path 已經指定，則直接使用它
+        # 否則則使用預設的 profit_record_folder
+        # 命名規則： "{profit_record_folder}/profits_{i}.csv"
+        # 故優先取 i 最大的檔案
+        if not profit_record_path:
+            profit_record_path = self._get_latest_profit_record_path(profit_record_folder)
+            
+        with open(profit_record_path, 'r') as f:
+            profits_detail = list(csv.DictReader(f))
+        
+        return self.culculate_profit(profits_detail)
+    
+    
+    def analyzed_symbols(self, profit_record_path: str = None, profit_record_folder: str = "BackTest/profit_record"):
+        
+        if not profit_record_path:
+            profit_record_path = self._get_latest_profit_record_path(profit_record_folder)
+            
+        with open(profit_record_path, 'r') as f:
+            profits_detail = list(csv.DictReader(f))
+        
+        symbols = set(p["symbol"] for p in profits_detail)
+        analyzed_symbols = {}
+        for symbol in symbols:
+            analyzed_symbols[symbol] = self.culculate_profit(
+                [p for p in profits_detail if p["symbol"] == symbol],
+                show_plot=False
+            )
+        
+        return analyzed_symbols
     
     
     # -------------------- Auxiliary Methods --------------------

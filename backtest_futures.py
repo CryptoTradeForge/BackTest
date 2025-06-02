@@ -42,12 +42,7 @@ class BackTestFutures:
         self.profit_record_path = profit_record_path
         print(f"Profit record will be saved to: {self.profit_record_path}")
         
-        # clean profit_rec_path and add header
-        with open(self.profit_record_path, 'w', newline='') as f:
-            writer = csv.writer(f)
-            # writer.writerow(["symbol", "position_type", "order_time", "entry_time", "entry_price", "exit_time", "exit_price", "amount", "leverage", "reason", "pnl", "pnl_pct", "win/loss"])
-            writer.writerow(["symbol", "position_type", "entry_time", "entry_price", "exit_time", "exit_price", "exit_reason", "amount", "leverage", "pnl", "pnl_pct", "win/loss"])
-        
+
         self.data = None # 開始回測時要先 update 資料
         '''
         data 形式：{
@@ -67,7 +62,17 @@ class BackTestFutures:
         
         self.now = None # 用來記錄當前時間，回測時會更新
         self.opening_positions = []
-        
+        self.need_initialize = True
+    
+    
+    def initialize_profit_record(self):
+        # clean profit_rec_path and add header
+        with open(self.profit_record_path, 'w', newline='') as f:
+            writer = csv.writer(f)
+            # writer.writerow(["symbol", "position_type", "order_time", "entry_time", "entry_price", "exit_time", "exit_price", "amount", "leverage", "reason", "pnl", "pnl_pct", "win/loss"])
+            writer.writerow(["symbol", "position_type", "entry_time", "entry_price", "exit_time", "exit_price", "exit_reason", "amount", "leverage", "pnl", "pnl_pct", "win/loss"])
+        return False
+            
     # -------------------- Futures Trading Methods --------------------
     def place_market_order(self, symbol: str, position_type: str, leverage: int, amount: float, 
                           stop_loss_price: Optional[float] = None, 
@@ -83,6 +88,28 @@ class BackTestFutures:
             stop_loss_price (float, optional): 止損價格
             take_profit_price (float, optional): 止盈價格
         """
+        
+        # 檢查 止盈價格 和 止損價格 是否合理
+        if stop_loss_price is not None:
+            if position_type == "LONG" and stop_loss_price >= self.get_price(symbol):
+                print(f"LONG position stop loss price: {stop_loss_price}, current price: {self.get_price(symbol)}")
+                # raise ValueError("LONG position stop loss price must be lower than current price.")
+                return
+            elif position_type == "SHORT" and stop_loss_price <= self.get_price(symbol):
+                print(f"SHORT position stop loss price: {stop_loss_price}, current price: {self.get_price(symbol)}")
+                # raise ValueError("SHORT position stop loss price must be higher than current price.")
+                return
+                
+        if take_profit_price is not None:
+            if position_type == "LONG" and take_profit_price <= self.get_price(symbol):
+                print(f"LONG position take profit price: {take_profit_price}, current price: {self.get_price(symbol)}")
+                # raise ValueError("LONG position take profit price must be higher than current price.")
+                return
+            elif position_type == "SHORT" and take_profit_price >= self.get_price(symbol):
+                print(f"SHORT position take profit price: {take_profit_price}, current price: {self.get_price(symbol)}")
+                # raise ValueError("SHORT position take profit price must be lower than current price.")
+                return
+        
         
         # 確認餘額是否足夠
         if self.balance - self.using_balance < amount / leverage:
@@ -145,6 +172,9 @@ class BackTestFutures:
         pnl -= position["amount"] * 0.001 # 手續費
         
         pnl_pct = pnl / (position["amount"] / position["leverage"]) * 100
+        
+        if self.need_initialize:
+            self.need_initialize = self.initialize_profit_record()
         
         # 記錄平倉資訊
         with open(self.profit_record_path, 'a', newline='') as f:
