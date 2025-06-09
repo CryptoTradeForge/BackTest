@@ -1,6 +1,7 @@
 import os
 import csv
 import glob
+import re
 
 
 class ProfitCalculator:
@@ -27,7 +28,7 @@ class ProfitCalculator:
         plt.show()
     
     
-    def culculate_profit(self, profits_detail, show_plot: bool = True):
+    def calculate_profit(self, profits_detail, show_plot: bool = True):
         # 取得所有收益
         profits = [float(p["pnl"]) for p in profits_detail]
         
@@ -115,7 +116,7 @@ class ProfitCalculator:
         }
     
     
-    def culculate_profit_path(self, profit_record_path: str = None, profit_record_folder: str = "BackTest/profit_record"):
+    def calculate_profit_path(self, profit_record_path: str = None, profit_record_folder: str = "BackTest/profit_record"):
         
         # 如果 profit_record_path 已經指定，則直接使用它
         # 否則則使用預設的 profit_record_folder
@@ -127,10 +128,33 @@ class ProfitCalculator:
         with open(profit_record_path, 'r') as f:
             profits_detail = list(csv.DictReader(f))
         
-        return self.culculate_profit(profits_detail)
+        return self.calculate_profit(profits_detail)
     
     
-    def analyzed_symbols(self, profit_record_path: str = None, profit_record_folder: str = "BackTest/profit_record"):
+    def analyze_symbol(self, symbol: str, profit_record_path: str = None, profit_record_folder: str = "BackTest/profit_record", show_plot: bool = True):
+        """
+        分析單一交易對的利潤情況
+        :param symbol: 交易對名稱
+        :param profit_record_path: 利潤記錄檔案路徑，如果為 None，則使用預設的資料夾
+        :param profit_record_folder: 利潤記錄檔案所在的資料夾
+        :return: 該交易對的利潤分析結果
+        """
+        
+        if not profit_record_path:
+            profit_record_path = self._get_latest_profit_record_path(profit_record_folder)
+        
+        with open(profit_record_path, 'r') as f:
+            profits_detail = list(csv.DictReader(f))
+        
+        symbol_profits = [p for p in profits_detail if p["symbol"] == symbol]
+        
+        if not symbol_profits:
+            return None
+        
+        return self.calculate_profit(symbol_profits, show_plot=show_plot)
+    
+    
+    def analyze_symbols(self, profit_record_path: str = None, profit_record_folder: str = "BackTest/profit_record", show_plot: bool = False):
         
         if not profit_record_path:
             profit_record_path = self._get_latest_profit_record_path(profit_record_folder)
@@ -141,10 +165,11 @@ class ProfitCalculator:
         symbols = set(p["symbol"] for p in profits_detail)
         analyzed_symbols = {}
         for symbol in symbols:
-            analyzed_symbols[symbol] = self.culculate_profit(
+            analyzed_symbols[symbol] = self.calculate_profit(
                 [p for p in profits_detail if p["symbol"] == symbol],
-                show_plot=False
+                show_plot=show_plot
             )
+            print(f"Analyzed {symbol}: {analyzed_symbols[symbol]}")
         
         return analyzed_symbols
     
@@ -165,11 +190,14 @@ class ProfitCalculator:
         # 獲取所有符合命名規則的檔案
         pattern = os.path.join(profit_record_folder, "profits_*.csv")
         files = glob.glob(pattern)
+        
+        valid_files = [f for f in files if re.search(r"profits_(\d+)\.csv$", os.path.basename(f))]
+        
         if not files:
             return None
         
         # 取得檔案名稱中的數字部分，並找到最大的數字
-        latest_file = max(files, key=lambda x: int(x.split('_')[-1].split('.')[0]))
+        latest_file = max(valid_files, key=lambda x: int(x.split('_')[-1].split('.')[0]))
         return latest_file if os.path.isfile(latest_file) else None
         
     
