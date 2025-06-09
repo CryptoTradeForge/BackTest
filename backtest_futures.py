@@ -21,6 +21,7 @@ class BackTestFutures:
             initial_balance (float): 初始餘額
             profit_record_path (str): 儲存利潤記錄的路徑
         """
+        self.use_balance = True  # 是否使用餘額進行交易
         self.balance = initial_balance
         self.using_balance = 0
         self.timezone = pytz.timezone("Asia/Taipei")
@@ -134,12 +135,15 @@ class BackTestFutures:
         })
         
         # 更新 using balance
-        self.using_balance += amount / leverage
+        if self.use_balance:
+            self.using_balance += amount / leverage
         
         if self.show_info:
             print(f"開 {position_type} 倉成功，交易對: {symbol}, 槓桿: {leverage}, 金額: {amount} USDT, 價格: {price}")
-            print(f"當前餘額: {self.balance} USDT")
-            print(f"當前使用餘額: {self.using_balance} USDT")
+            
+            if self.use_balance:
+                print(f"當前餘額: {self.balance} USDT")
+                print(f"當前使用餘額: {self.using_balance} USDT")
         
     
     def close_position(self, symbol: str, position_type: str, price: Optional[float] = None, 
@@ -197,13 +201,15 @@ class BackTestFutures:
         self.opening_positions.remove(position)
         
         # 更新餘額
-        self.balance += pnl
-        self.using_balance -= position["amount"] / position["leverage"]
+        if self.use_balance:
+            self.balance += pnl
+            self.using_balance -= position["amount"] / position["leverage"]
         
         if self.show_info:
             print(f"平 {position_type} 倉成功，交易對: {symbol}, 平倉價格: {exit_price}, PnL: {pnl}, PnL%: {pnl_pct}%")
-            print(f"當前餘額: {self.balance} USDT")
-        print(f"當前使用餘額: {self.using_balance} USDT")
+            if self.use_balance:
+                print(f"當前餘額: {self.balance} USDT")
+                print(f"當前使用餘額: {self.using_balance} USDT")
     
     def get_positions(self, symbol: Optional[str] = None) -> List[Dict[str, Any]]:
         """
