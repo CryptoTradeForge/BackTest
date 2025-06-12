@@ -12,6 +12,7 @@ class BackTestFutures:
     def __init__(
         self, 
         initial_balance: float = 1000.0,
+        profit_record_path: str = None,
         profit_record_folder = "BackTest/profit_record"
     ):
         """
@@ -27,20 +28,24 @@ class BackTestFutures:
         self.timezone = pytz.timezone("Asia/Taipei")
         self.show_info = False  # 是否顯示交易資訊
         
-        # 儲存路徑： "{profit_record_folder}/profits_{i}.csv"
-        # 如果編號 i 的檔案已存在，則會自動增加編號
-        self.profit_record_folder = Path(profit_record_folder)
-        self.profit_record_folder.mkdir(parents=True, exist_ok=True)
-        
-        i = 0
-        while True:
-            profit_record_path = self.profit_record_folder / f"profits_{i}.csv"
-            if not profit_record_path.exists():
-                self.profit_record_path = profit_record_path
-                break
-            i += 1
+        if profit_record_path is not None:
+            self.profit_record_path = Path(profit_record_path)
+            self.profit_record_path.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            # 儲存路徑： "{profit_record_folder}/profits_{i}.csv"
+            # 如果編號 i 的檔案已存在，則會自動增加編號
+            self.profit_record_folder = Path(profit_record_folder)
+            self.profit_record_folder.mkdir(parents=True, exist_ok=True)
+            
+            i = 0
+            while True:
+                profit_record_path = self.profit_record_folder / f"profits_{i}.csv"
+                if not profit_record_path.exists():
+                    self.profit_record_path = profit_record_path
+                    break
+                i += 1
 
-        self.profit_record_path = profit_record_path
+            self.profit_record_path = profit_record_path
         print(f"Profit record will be saved to: {self.profit_record_path}")
         
 
