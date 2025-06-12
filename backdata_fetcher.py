@@ -123,5 +123,5 @@ if __name__ == "__main__":
     cmc_api = CoinMarketCapAPI()
     fetcher = BackDataFetcher(future_api, cmc_api)
 
-    data = fetcher.fetch_topk_and_save(topk=100, limit=51840, buffer=500)
+    data = fetcher.fetch_topk_and_save(topk=100, limit=100, buffer=10)
     print(data.keys())

@@ -232,9 +232,9 @@ class BackTestFutures:
             dict: 包含可用餘額、已用餘額和總餘額的字典
         """
         return {
-            "available": self.balance,
-            "used": sum(p["amount"] for p in self.opening_positions),
-            "total": self.balance + sum(p["amount"] for p in self.opening_positions)
+            "available_balance": self.balance - self.using_balance,
+            "used_balance": self.using_balance,
+            "total_balance": self.balance
         }
 
     def get_price(self, symbol: str) -> float:
