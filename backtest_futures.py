@@ -31,6 +31,8 @@ class BackTestFutures:
         if profit_record_path is not None:
             self.profit_record_path = Path(profit_record_path)
             self.profit_record_path.parent.mkdir(parents=True, exist_ok=True)
+            if not self.profit_record_path.exists():
+                self.need_initialize = True
         else:
             # 儲存路徑： "{profit_record_folder}/profits_{i}.csv"
             # 如果編號 i 的檔案已存在，則會自動增加編號
@@ -46,6 +48,8 @@ class BackTestFutures:
                 i += 1
 
             self.profit_record_path = profit_record_path
+            self.need_initialize = True
+            
         print(f"Profit record will be saved to: {self.profit_record_path}")
         
 
@@ -68,7 +72,6 @@ class BackTestFutures:
         
         self.now = None # 用來記錄當前時間，回測時會更新
         self.opening_positions = []
-        self.need_initialize = True
     
     
     def initialize_profit_record(self):
