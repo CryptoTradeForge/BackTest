@@ -3,7 +3,7 @@ import pytz
 import json
 from datetime import datetime
 from pathlib import Path
-
+from GeneralUtils.exclusion_coins_record import ExclusionCoinsRecord
 
 class BackDataFetcher:
     """
@@ -22,6 +22,7 @@ class BackDataFetcher:
         self.cmc_api = cmc_api
         self.save_folder = save_folder
         self.timezone = pytz.timezone("Asia/Taipei")
+        self.exclusion_coins = ExclusionCoinsRecord()
 
     def get_historical_data_and_check(self, symbol: str, interval: str, limit: int):
         
@@ -78,7 +79,7 @@ class BackDataFetcher:
                 all_data[symbol] = self.fetch_data(symbol, limit, buffer)
             except Exception as e:
                 print(f"Error fetching data for {symbol}: {e}")
-                self.cmc_api.add_problematic_coin(symbol)
+                self.exclusion_coins.add_problematic_coin(symbol)
         return all_data
 
     def fetch_topk_data(self, topk: int = 10, limit: int = 10000, buffer: int = 1000) -> dict:
@@ -90,6 +91,9 @@ class BackDataFetcher:
         :return: A dictionary containing historical data for the top k cryptocurrencies across different timeframes.
         """
         symbols = self.cmc_api.get_top_cryptos(limit=topk)
+        symbols = self.exclusion_coins.filter_coins(symbols)
+        if not symbols:
+            raise ValueError("No valid cryptocurrencies found in the top list after filtering.")
         return self.fetch_data_symbols(symbols, limit, buffer)
 
     def fetch_topk_and_save(self, topk: int = 10, limit: int = 10000, buffer: int = 1000, save_path: str = None) -> dict:
