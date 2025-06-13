@@ -96,7 +96,7 @@ class BackDataFetcher:
         :param since: The timestamp (in seconds) from which to start fetching data.
         :return: A dictionary containing historical data for the symbol across different timeframes.
         """
-        print(f"============================== Fetching {symbol} since {since} ==============================")
+        print(f"Fetching {symbol} since: {since}")
         
         data = {
             '5m': self.future_api.get_historical_data(symbol=symbol, interval='5m', since=since-self.timeframe_to_ms['5m']*(buffer+5)),
