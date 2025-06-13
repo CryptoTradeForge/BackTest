@@ -23,6 +23,14 @@ class BackDataFetcher:
         self.save_folder = save_folder
         self.timezone = pytz.timezone("Asia/Taipei")
         self.exclusion_coins = ExclusionCoinsRecord()
+        
+        self.timeframe_to_ms = {
+            '5m': 300000,
+            '15m': 900000,
+            '1h': 3600000,
+            '4h': 14400000,
+            '1d': 86400000
+        }
 
     def get_historical_data_and_check(self, symbol: str, interval: str, limit: int):
         
@@ -36,7 +44,6 @@ class BackDataFetcher:
         
         if len(set([d[0] for d in data])) < limit:
             raise ValueError(f"Insufficient data points for {symbol} at interval {interval}. Expected {limit}, got {len(data)}.")
-        
         
         
         return data
@@ -81,6 +88,32 @@ class BackDataFetcher:
                 print(f"Error fetching data for {symbol}: {e}")
                 self.exclusion_coins.add_problematic_coin(symbol)
         return all_data
+
+    def fetch_data_since(self, symbol: str, since: int, buffer: int = 1000) -> dict:
+        """
+        Fetches historical data for a given symbol starting from a specific timestamp.
+        :param symbol: The trading symbol for which to fetch data.
+        :param since: The timestamp (in seconds) from which to start fetching data.
+        :return: A dictionary containing historical data for the symbol across different timeframes.
+        """
+        print(f"============================== Fetching {symbol} since {since} ==============================")
+        
+        data = {
+            '5m': self.future_api.get_historical_data(symbol=symbol, interval='5m', since=since-self.timeframe_to_ms['5m']*(buffer+5)),
+            '15m': self.future_api.get_historical_data(symbol=symbol, interval='15m', since=since-self.timeframe_to_ms['15m']*(buffer+5)),
+            '1h': self.future_api.get_historical_data(symbol=symbol, interval='1h', since=since-self.timeframe_to_ms['1h']*(buffer+5)),
+            '4h': self.future_api.get_historical_data(symbol=symbol, interval='4h', since=since-self.timeframe_to_ms['4h']*(buffer+5)),
+            '1d': self.future_api.get_historical_data(symbol=symbol, interval='1d', since=since-self.timeframe_to_ms['1d']*(buffer+5))
+        }
+        
+        # Check if data is sufficient
+        for interval, interval_data in data.items():
+            if not interval_data:
+                raise ValueError(f"No data found for {symbol} at interval {interval} since {since}.")
+            if len(set([d[0] for d in interval_data])) != len(interval_data) or len(interval_data) < buffer:
+                raise ValueError(f"Insufficient data points for {symbol} at interval {interval} since {since}. Expected at least {buffer}, got {len(interval_data)}.")
+        
+        return data
 
     def fetch_topk_data(self, topk: int = 10, limit: int = 10000, buffer: int = 1000) -> dict:
         """
