@@ -15,7 +15,62 @@ class BackDataAcquisition:
             min_timeframe (str): The minimum timeframe for the data acquisition, default is "5m".
         """
         self.min_timeframe = min_timeframe
+    
+    
+    def acquire_single_symbol_data(self, data, timestamp, limit=1000):
+        """
+        Acquire historical data for a single symbol for backtesting.
 
+        Args:
+            data (dict): The historical data for a single symbol.
+            
+            data should be structured as follows:
+            {
+                "5m": [(timestamp1, open1, high1, low1, close1), ...],    (timestamps would be increasing)
+                "15m": [(timestamp2, open2, high2, low2, close2), ...],
+                ...
+            }
+            
+            timestamp (str or int): The timestamp for the data.
+            limit (int): The maximum number of data points to acquire.
+            
+        Returns:
+            tuple: A tuple containing two dictionaries:
+                - current_data: The current data for the symbol at the specified timestamp.
+                - fetched_data: The historical data fetched for the symbol and timeframe.
+        """
+        
+        fetched_data = {}
+        current_data = {}
+        
+        current_data["timestamp"] = timestamp
+        
+        for timeframe, timeframe_data in data.items():
+            
+            final_timestamp_idx_before_time_line = 0
+            for i, data_point in enumerate(timeframe_data):
+                ts = data_point[0]
+                if ts <= timestamp:
+                    final_timestamp_idx_before_time_line = i
+                else:
+                    break
+            
+            # the last data is the current data
+            if timeframe == self.min_timeframe and final_timestamp_idx_before_time_line >= 0:
+                current_data["open"] = float(timeframe_data[final_timestamp_idx_before_time_line][1])
+                current_data["high"] = float(timeframe_data[final_timestamp_idx_before_time_line][2])
+                current_data["low"] = float(timeframe_data[final_timestamp_idx_before_time_line][3])
+                # 其他暫時用不到 (有需要的話可以再加上)
+            
+            # 不取 final_timestamp_idx_before_time_line (current data)
+            # 往前取 limit 個數據 (也就是從 final_timestamp_idx_before_time_line - 1 那筆資料往前取)
+            start_idx = max(0, final_timestamp_idx_before_time_line - limit)
+            end_idx = final_timestamp_idx_before_time_line
+            fetched_data[timeframe] = timeframe_data[start_idx:end_idx]
+        
+        
+        return current_data, fetched_data
+        
     
     def acquire_data(self, data, timestamp, limit=1000):
         """

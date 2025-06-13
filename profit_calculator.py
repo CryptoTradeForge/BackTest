@@ -28,6 +28,28 @@ class ProfitCalculator:
         plt.show()
     
     
+    @staticmethod
+    def calculate_tpwr(profits_detail):
+        """
+        計算 Total Profit and Win Rate (TPWR)
+        :param profits_detail: 利潤詳細資料，應該是一個包含多個交易的列表，每個交易是一個字典
+        :return: 一個字典，包含總利潤、勝率的統計數據
+        """
+        total_profit = sum(float(p["pnl"]) for p in profits_detail)
+        total_trades = len(profits_detail)
+        
+        if total_trades == 0:
+            return {"total_profit": 0, "win_rate": 0}
+        
+        win_trades = len([p for p in profits_detail if float(p["pnl"]) > 0])
+        win_rate = (win_trades / total_trades) * 100
+        
+        return {
+            "total_profit": round(total_profit, 3),
+            "win_rate": round(win_rate, 3)
+        }
+    
+    
     def calculate_profit(self, profits_detail, show_plot: bool = True):
         # 取得所有收益
         profits = [float(p["pnl"]) for p in profits_detail]
