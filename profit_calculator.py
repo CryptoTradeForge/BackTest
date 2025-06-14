@@ -39,14 +39,22 @@ class ProfitCalculator:
         total_trades = len(profits_detail)
         
         if total_trades == 0:
-            return {"total_profit": 0, "win_rate": 0}
+            return {"total_profit": 0, "win_rate": 0, "avg_win": 0, "avg_loss": 0}
         
-        win_trades = len([p for p in profits_detail if float(p["pnl"]) > 0])
+        win_trade_list = [p for p in profits_detail if float(p["pnl"]) > 0]
+        loss_trade_list = [p for p in profits_detail if float(p["pnl"]) < 0]
+        
+        win_trades = len(win_trade_list)
         win_rate = (win_trades / total_trades) * 100
+        
+        avg_win = sum(float(p["pnl"]) for p in win_trade_list) / win_trades if win_trades > 0 else 0
+        avg_loss = sum(float(p["pnl"]) for p in loss_trade_list) / len(loss_trade_list) if loss_trade_list else 0
         
         return {
             "total_profit": round(total_profit, 3),
-            "win_rate": round(win_rate, 3)
+            "win_rate": round(win_rate, 3),
+            "avg_win": round(avg_win, 3),
+            "avg_loss": round(avg_loss, 3)
         }
     
     
