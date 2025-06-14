@@ -13,7 +13,8 @@ class BackTestFutures:
         self, 
         initial_balance: float = 1000.0,
         profit_record_path: str = None,
-        profit_record_folder = "BackTest/profit_record"
+        profit_record_folder = "BackTest/profit_record",
+        show_info: bool = False
     ):
         """
         Initializes the BackTestFutures with an initial balance and a path to save profit records.
@@ -26,7 +27,7 @@ class BackTestFutures:
         self.balance = initial_balance
         self.using_balance = 0
         self.timezone = pytz.timezone("Asia/Taipei")
-        self.show_info = False  # 是否顯示交易資訊
+        self.show_info = show_info
         
         if profit_record_path is not None:
             self.profit_record_path = Path(profit_record_path)
@@ -49,8 +50,9 @@ class BackTestFutures:
 
             self.profit_record_path = profit_record_path
             self.need_initialize = True
-            
-        print(f"Profit record will be saved to: {self.profit_record_path}")
+        
+        if self.show_info:
+            print(f"Profit record will be saved to: {self.profit_record_path}")
         
 
         self.data = None # 開始回測時要先 update 資料
