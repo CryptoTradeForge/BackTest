@@ -89,14 +89,15 @@ class BackDataFetcher:
                 self.exclusion_coins.add_problematic_coin(symbol)
         return all_data
 
-    def fetch_data_since(self, symbol: str, since: int, buffer: int = 1000) -> dict:
+    def fetch_data_since(self, symbol: str, since: int, buffer: int = 1000, show: bool = False) -> dict:
         """
         Fetches historical data for a given symbol starting from a specific timestamp.
         :param symbol: The trading symbol for which to fetch data.
         :param since: The timestamp (in seconds) from which to start fetching data.
         :return: A dictionary containing historical data for the symbol across different timeframes.
         """
-        print(f"Fetching {symbol} since: {since}")
+        if show:
+            print(f"Fetching {symbol} since: {since}")
         
         data = {
             '5m': self.future_api.get_historical_data(symbol=symbol, interval='5m', since=since-self.timeframe_to_ms['5m']*(buffer+5)),
