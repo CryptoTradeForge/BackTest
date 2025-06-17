@@ -76,6 +76,60 @@ class BackTestFutures:
         self.opening_positions = []
     
     
+    def set_show_info(self, show_info: bool) -> None:
+        """
+        設定是否顯示交易資訊
+        
+        Args:
+            show_info (bool): 是否顯示交易資訊
+        """
+        self.show_info = show_info
+        if self.show_info:
+            print("交易資訊顯示已啟用")
+    
+    def set_use_balance(self, use_balance: bool) -> None:
+        """
+        設定是否使用餘額進行交易
+        
+        Args:
+            use_balance (bool): 是否使用餘額進行交易
+        """
+        self.use_balance = use_balance
+        
+        # 如果不使用餘額，則清空已使用餘額
+        if not self.use_balance:
+            self.using_balance = 0
+            self.balance = 999999999999  # 設定一個很大的餘額，避免在回測時因為餘額不足而無法開倉
+            if self.show_info:
+                print("[use_balance] is set to [False]")
+        else:
+            if self.show_info:
+                print("[use_balance] is set to [True]")
+        
+    
+    def import_opening_positions(self, positions: List[Dict[str, Any]]) -> None:
+        """
+        導入開倉資訊
+        """
+        
+        if not isinstance(positions, list):
+            raise ValueError("positions must be a list of dictionaries")
+        
+        for position in positions:
+            if not isinstance(position, dict):
+                raise ValueError("Each position must be a dictionary")
+            
+            required_keys = ["symbol", "position_type", "leverage", "amount", "entry_time", "entry_price"]
+            for key in required_keys:
+                if key not in position:
+                    raise ValueError(f"Position is missing required key: {key}")
+            
+            self.opening_positions.append(position)
+        
+        if self.show_info:
+            print(f"Imported {len(positions)} opening positions, current number of positions: {len(self.opening_positions)}")
+    
+    
     def initialize_profit_record(self):
         # clean profit_rec_path and add header
         with open(self.profit_record_path, 'w', newline='') as f:
