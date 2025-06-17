@@ -330,15 +330,17 @@ class BackTestFutures:
             data (dict): 回測資料，格式參見 self.data 的說明
         """
         
+        # 更新資料
+        self.data = data
+        
         print(f"🚩debuging: 0")
         
-        # 先檢查止盈/止損/爆倉是否觸發
+        # 檢查止盈/止損/爆倉是否觸發
         self.check_stop_loss_take_profit()
         
         print(f"🚩debuging: 6")
         
-        # 更新資料
-        self.data = data
+        
         
         timestamp = self.data["timestamp"] / 1000 # timestamp 是毫秒級別，要轉換為秒級別
         dt = datetime.fromtimestamp(timestamp, self.timezone)
