@@ -348,6 +348,8 @@ class BackTestFutures:
             
             # 如果 position 剛開倉，則不檢查止盈/止損/爆倉
             if position["entry_time"] == self.now:
+                if self.show_info:
+                    print(f"Position for {position['symbol']} just opened, skipping stop loss/take profit check.")
                 continue
             
             symbol = position["symbol"]
