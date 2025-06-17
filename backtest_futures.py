@@ -330,8 +330,12 @@ class BackTestFutures:
             data (dict): 回測資料，格式參見 self.data 的說明
         """
         
+        print(f"🚩debuging: 0")
+        
         # 先檢查止盈/止損/爆倉是否觸發
         self.check_stop_loss_take_profit()
+        
+        print(f"🚩debuging: 6")
         
         # 更新資料
         self.data = data
@@ -339,27 +343,37 @@ class BackTestFutures:
         timestamp = self.data["timestamp"] / 1000 # timestamp 是毫秒級別，要轉換為秒級別
         dt = datetime.fromtimestamp(timestamp, self.timezone)
         self.now = dt.strftime("%Y-%m-%d %H:%M:%S")
-    
+
+        print(f"🚩debuging: end")
+        
     def check_stop_loss_take_profit(self):
         """
         檢查所有開倉的止損和止盈以及爆倉是否觸發，若觸發則平倉。
         """
+        
+        print(f"🚩debuging: 1")
+        
         for position in self.opening_positions:
             
+            print(f"🚩debuging: 2")
             # 如果 position 剛開倉，則不檢查止盈/止損/爆倉
             if position["entry_time"] == self.now:
                 if self.show_info:
                     print(f"Position for {position['symbol']} just opened, skipping stop loss/take profit check.")
                 continue
-            
+            print(f"🚩debuging: 3")
             symbol = position["symbol"]
             position_type = position["position_type"]
             
             high = self.data[symbol]["high"]
             low = self.data[symbol]["low"]
             
+            print(f"🚩debuging: 4")
+            
             # 檢查爆倉
             if position_type == "LONG":
+                
+                print(f"🚩debuging: 5-1")
                 
                 # 檢查爆倉
                 liquidation_price = position["entry_price"] * (1 - 1 / position["leverage"])
@@ -374,6 +388,8 @@ class BackTestFutures:
 
             elif position_type == "SHORT":
                 
+                print(f"🚩debuging: 5-2")
+                
                 # 檢查爆倉
                 liquidation_price = position["entry_price"] * (1 + 1 / position["leverage"])
                 if high >= liquidation_price:
@@ -384,3 +400,5 @@ class BackTestFutures:
                     self.close_position(symbol, position_type, price=position["stop_loss_price"], exit_reason="stop_loss")
                 elif position["take_profit_price"] is not None and low <= position["take_profit_price"]:
                     self.close_position(symbol, position_type, price=position["take_profit_price"], exit_reason="take_profit")
+            
+            print(f"🚩debuging: end sltp")
