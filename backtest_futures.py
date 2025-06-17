@@ -333,12 +333,12 @@ class BackTestFutures:
         # 更新資料
         self.data = data
         
-        # 檢查止盈/止損/爆倉是否觸發
-        self.check_stop_loss_take_profit()
-        
         timestamp = self.data["timestamp"] / 1000 # timestamp 是毫秒級別，要轉換為秒級別
         dt = datetime.fromtimestamp(timestamp, self.timezone)
         self.now = dt.strftime("%Y-%m-%d %H:%M:%S")
+        
+        # 檢查止盈/止損/爆倉是否觸發
+        self.check_stop_loss_take_profit()
         
     def check_stop_loss_take_profit(self):
         """
