@@ -100,11 +100,11 @@ class BackDataFetcher:
             print(f"Fetching {symbol} since: {since}")
         
         data = {
-            '5m': self.future_api.get_historical_data(symbol=symbol, interval='5m', since=since-self.timeframe_to_ms['5m']*(buffer+5)),
-            '15m': self.future_api.get_historical_data(symbol=symbol, interval='15m', since=since-self.timeframe_to_ms['15m']*(buffer+5)),
-            '1h': self.future_api.get_historical_data(symbol=symbol, interval='1h', since=since-self.timeframe_to_ms['1h']*(buffer+5)),
-            '4h': self.future_api.get_historical_data(symbol=symbol, interval='4h', since=since-self.timeframe_to_ms['4h']*(buffer+5)),
-            '1d': self.future_api.get_historical_data(symbol=symbol, interval='1d', since=since-self.timeframe_to_ms['1d']*(buffer+5))
+            '5m': self.future_api.get_historical_data(symbol=symbol, interval='5m', since=since-self.timeframe_to_ms['5m']*(buffer+10)),
+            '15m': self.future_api.get_historical_data(symbol=symbol, interval='15m', since=since-self.timeframe_to_ms['15m']*(buffer+10)),
+            '1h': self.future_api.get_historical_data(symbol=symbol, interval='1h', since=since-self.timeframe_to_ms['1h']*(buffer+10)),
+            '4h': self.future_api.get_historical_data(symbol=symbol, interval='4h', since=since-self.timeframe_to_ms['4h']*(buffer+10)),
+            '1d': self.future_api.get_historical_data(symbol=symbol, interval='1d', since=since-self.timeframe_to_ms['1d']*(buffer+10))
         }
         
         # Check if data is sufficient
@@ -112,7 +112,7 @@ class BackDataFetcher:
             if not interval_data:
                 raise ValueError(f"No data found for {symbol} at interval {interval} since {since}.")
             if len(set([d[0] for d in interval_data])) != len(interval_data) or len(interval_data) < buffer:
-                raise ValueError(f"Insufficient data points for {symbol} at interval {interval} since {since}. Expected at least {buffer}, got {len(interval_data)}.")
+                raise ValueError(f" {symbol} at interval {interval} since {since}. Expected at least {buffer}, got {len(interval_data)}.")
         
         return data
 
