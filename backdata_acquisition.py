@@ -3,7 +3,7 @@
 # 預設最小 timeframe 為 5 分鐘 (用於 current data)
 # current data 預設只取 open, high, low 三個欄位 (可以自己改)
 
-class BackDataAcquisition_Advanced:
+class BackDataAcquisition:
     """
     A class to handle the acquisition of backtest data.
     This class is responsible for fetching and managing historical data for backtesting purposes.
