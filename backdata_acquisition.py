@@ -19,7 +19,7 @@ class BackDataAcquisition:
         "volume": 5
     }
     
-    def __init__(self, min_timeframe="5m", fields=("open", "high", "low")):
+    def __init__(self, tf_to_ms, min_timeframe="5m", fields=("open", "high", "low")):
         """
         Initialize the BackDataAcquisition class.
 
@@ -28,6 +28,7 @@ class BackDataAcquisition:
             fields (tuple): The fields to extract for current_data, default is ("open", "high", "low").
                            Available fields: "open", "high", "low", "close", "volume"
         """
+        self.tf_to_ms = tf_to_ms
         self.min_timeframe = min_timeframe
         self.fields = fields
         # Cache for incremental indexing - stores last found index for each symbol and timeframe
@@ -47,16 +48,69 @@ class BackDataAcquisition:
             if field not in self.FIELD_MAP:
                 raise ValueError(f"Field '{field}' not supported. Available fields: {list(self.FIELD_MAP.keys())}")
     
-    def _binary_search_timestamp(self, timeframe_data, timestamp):
+    def _is_candle_closed(self, candle_timestamp, timeframe, current_timestamp):
         """
-        Binary search to find the index of the last data point with timestamp <= target timestamp.
+        Check if a candle is closed at the current timestamp.
+        
+        Args:
+            candle_timestamp (int): The timestamp of the candle (start time)
+            timeframe (str): The timeframe of the candle
+            current_timestamp (int): The current timestamp
+            
+        Returns:
+            bool: True if candle is closed, False otherwise
+        """
+        if timeframe not in self.tf_to_ms:
+            print(f"Warning: Unsupported timeframe '{timeframe}' not found in tf_to_ms")
+            return False
+        
+        timeframe_ms = self.tf_to_ms[timeframe]
+        candle_close_time = candle_timestamp + timeframe_ms
+        return current_timestamp >= candle_close_time
+    
+    def _find_current_candle_index(self, timeframe_data, timestamp, timeframe):
+        """
+        Find the index of the current candle (may be open) at target timestamp.
         
         Args:
             timeframe_data (list): List of data points [(timestamp, open, high, low, close), ...]
             timestamp (int): Target timestamp
+            timeframe (str): The timeframe of the data
             
         Returns:
-            int: Index of the last data point with timestamp <= target timestamp, -1 if none found
+            int: Index of the current candle at target timestamp, -1 if none found
+        """
+        if not timeframe_data:
+            return -1
+            
+        if timeframe not in self.tf_to_ms:
+            print(f"Warning: Unsupported timeframe '{timeframe}' not found in tf_to_ms")
+            return -1
+            
+        timeframe_ms = self.tf_to_ms[timeframe]
+        
+        # Find the candle that contains the target timestamp
+        # If timestamp is exactly at candle close time, it belongs to that candle
+        for i in range(len(timeframe_data) - 1, -1, -1):  # Search backwards
+            candle_start = timeframe_data[i][0]
+            candle_end = candle_start + timeframe_ms
+            
+            if candle_start <= timestamp <= candle_end:
+                return i
+                
+        return -1
+    
+    def _binary_search_timestamp(self, timeframe_data, timestamp, timeframe):
+        """
+        Binary search to find the index of the last closed candle at target timestamp.
+        
+        Args:
+            timeframe_data (list): List of data points [(timestamp, open, high, low, close), ...]
+            timestamp (int): Target timestamp
+            timeframe (str): The timeframe of the data
+            
+        Returns:
+            int: Index of the last closed candle at target timestamp, -1 if none found
         """
         if not timeframe_data:
             return -1
@@ -66,7 +120,7 @@ class BackDataAcquisition:
         
         while left <= right:
             mid = (left + right) // 2
-            if timeframe_data[mid][0] <= timestamp:
+            if self._is_candle_closed(timeframe_data[mid][0], timeframe, timestamp):
                 result = mid
                 left = mid + 1
             else:
@@ -74,17 +128,19 @@ class BackDataAcquisition:
                 
         return result
     
-    def _incremental_search_timestamp(self, timeframe_data, timestamp, cache_key):
+    def _incremental_search_timestamp(self, timeframe_data, timestamp, cache_key, timeframe):
         """
         Incremental search using cached index for efficient sequential timestamp lookups.
+        Only returns closed candles.
         
         Args:
             timeframe_data (list): List of data points [(timestamp, open, high, low, close), ...]
             timestamp (int): Target timestamp
             cache_key (str): Key for index caching
+            timeframe (str): The timeframe of the data
             
         Returns:
-            int: Index of the last data point with timestamp <= target timestamp, -1 if none found
+            int: Index of the last closed candle at target timestamp, -1 if none found
         """
         if not timeframe_data:
             return -1
@@ -98,12 +154,12 @@ class BackDataAcquisition:
         # Check if we need to search backwards (timestamp went back in time)
         if start_idx > 0 and timeframe_data[start_idx][0] > timestamp:
             # Fall back to binary search for backwards lookup
-            result = self._binary_search_timestamp(timeframe_data, timestamp)
+            result = self._binary_search_timestamp(timeframe_data, timestamp, timeframe)
         else:
             # Forward incremental search
             result = -1
             for i in range(start_idx, len(timeframe_data)):
-                if timeframe_data[i][0] <= timestamp:
+                if self._is_candle_closed(timeframe_data[i][0], timeframe, timestamp):
                     result = i
                 else:
                     break
@@ -114,23 +170,24 @@ class BackDataAcquisition:
             
         return result
     
-    def _find_timestamp_index(self, timeframe_data, timestamp, cache_key, force_binary_search=False):
+    def _find_timestamp_index(self, timeframe_data, timestamp, cache_key, timeframe, force_binary_search=False):
         """
-        Find the index of the last data point with timestamp <= target timestamp.
+        Find the index of the last closed candle at target timestamp.
         
         Args:
             timeframe_data (list): List of data points [(timestamp, open, high, low, close), ...]
             timestamp (int): Target timestamp
             cache_key (str): Key for index caching
+            timeframe (str): The timeframe of the data
             force_binary_search (bool): If True, use binary search instead of incremental search
             
         Returns:
-            int: Index of the last data point with timestamp <= target timestamp, -1 if none found
+            int: Index of the last closed candle at target timestamp, -1 if none found
         """
         if force_binary_search:
-            return self._binary_search_timestamp(timeframe_data, timestamp)
+            return self._binary_search_timestamp(timeframe_data, timestamp, timeframe)
         else:
-            return self._incremental_search_timestamp(timeframe_data, timestamp, cache_key)
+            return self._incremental_search_timestamp(timeframe_data, timestamp, cache_key, timeframe)
     
     def _extract_current_data_fields(self, data_point, fields):
         """
@@ -189,27 +246,33 @@ class BackDataAcquisition:
         for timeframe, timeframe_data in data.items():
             cache_key = f"single_{symbol}_{timeframe}"
             
-            # Find the last data point with timestamp <= target timestamp
+            # Find the last closed candle at target timestamp for historical data
             final_timestamp_idx = self._find_timestamp_index(
-                timeframe_data, timestamp, cache_key, force_binary_search
+                timeframe_data, timestamp, cache_key, timeframe, force_binary_search
             )
             
-            # Extract current data for minimum timeframe
-            if timeframe == self.min_timeframe and final_timestamp_idx >= 0:
-                current_fields = self._extract_current_data_fields(
-                    timeframe_data[final_timestamp_idx], self.fields
-                )
-                current_data.update(current_fields)
+            # Warning if no valid data found for this timeframe
+            if final_timestamp_idx < 0:
+                print(f"Warning: No closed candles found for symbol '{symbol}' timeframe '{timeframe}' at timestamp {timestamp}")
             
-            # Fetch historical data (excluding current data point)
+            # Extract current data for minimum timeframe (find current candle, may be open)
+            if timeframe == self.min_timeframe:
+                current_candle_idx = self._find_current_candle_index(timeframe_data, timestamp, timeframe)
+                if current_candle_idx >= 0:
+                    current_fields = self._extract_current_data_fields(
+                        timeframe_data[current_candle_idx], self.fields
+                    )
+                    current_data.update(current_fields)
+            
+            # Fetch historical data (only closed candles)
             if final_timestamp_idx >= 0:
                 if limit is None:
-                    # Return all data from beginning to timestamp (excluding current data point)
+                    # Return all closed data from beginning to timestamp
                     start_idx = 0
                 else:
                     # Return limited data based on limit parameter
-                    start_idx = max(0, final_timestamp_idx - limit)
-                end_idx = final_timestamp_idx
+                    start_idx = max(0, final_timestamp_idx - limit + 1)
+                end_idx = final_timestamp_idx + 1
                 fetched_data[timeframe] = timeframe_data[start_idx:end_idx]
             else:
                 fetched_data[timeframe] = []
@@ -262,27 +325,33 @@ class BackDataAcquisition:
             for timeframe, timeframe_data in symbol_data.items():
                 cache_key = f"{symbol}_{timeframe}"
                 
-                # Find the last data point with timestamp <= target timestamp
+                # Find the last closed candle at target timestamp for historical data
                 final_timestamp_idx = self._find_timestamp_index(
-                    timeframe_data, timestamp, cache_key, force_binary_search
+                    timeframe_data, timestamp, cache_key, timeframe, force_binary_search
                 )
                 
-                # Extract current data for minimum timeframe
-                if timeframe == self.min_timeframe and final_timestamp_idx >= 0:
-                    current_fields = self._extract_current_data_fields(
-                        timeframe_data[final_timestamp_idx], self.fields
-                    )
-                    current_data[symbol] = current_fields
+                # Warning if no valid data found for this timeframe
+                if final_timestamp_idx < 0:
+                    print(f"Warning: No closed candles found for symbol '{symbol}' timeframe '{timeframe}' at timestamp {timestamp}")
                 
-                # Fetch historical data (excluding current data point)
+                # Extract current data for minimum timeframe (find current candle, may be open)
+                if timeframe == self.min_timeframe:
+                    current_candle_idx = self._find_current_candle_index(timeframe_data, timestamp, timeframe)
+                    if current_candle_idx >= 0:
+                        current_fields = self._extract_current_data_fields(
+                            timeframe_data[current_candle_idx], self.fields
+                        )
+                        current_data[symbol] = current_fields
+                
+                # Fetch historical data (only closed candles)
                 if final_timestamp_idx >= 0:
                     if limit is None:
-                        # Return all data from beginning to timestamp (excluding current data point)
+                        # Return all closed data from beginning to timestamp
                         start_idx = 0
                     else:
                         # Return limited data based on limit parameter
-                        start_idx = max(0, final_timestamp_idx - limit)
-                    end_idx = final_timestamp_idx
+                        start_idx = max(0, final_timestamp_idx - limit + 1)
+                    end_idx = final_timestamp_idx + 1
                     fetched_data[symbol][timeframe] = timeframe_data[start_idx:end_idx]
                 else:
                     fetched_data[symbol][timeframe] = []
