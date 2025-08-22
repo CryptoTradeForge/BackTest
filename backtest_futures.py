@@ -56,6 +56,7 @@ class BackTestFutures:
         
 
         self.data = None # 開始回測時要先 update 資料
+        self.back_data = None # 用來存放回測資料
         '''
         data 形式：{
             timestamp: xxxxxxxxx,   # 時間戳記 (str or int)
@@ -115,6 +116,7 @@ class BackTestFutures:
         if not isinstance(positions, list):
             raise ValueError("positions must be a list of dictionaries")
         
+        # Validate all positions first
         for position in positions:
             if not isinstance(position, dict):
                 raise ValueError("Each position must be a dictionary")
@@ -321,8 +323,73 @@ class BackTestFutures:
         return self.data[symbol]["open"]
         
     
+    def get_historical_data(
+            self,
+            symbol: str,
+            interval: str,
+            limit: Optional[int] = None,
+            closed: bool = True,
+            show: bool = False,
+            since: Optional[int] = None
+        ) -> List[List[Any]]:
+        """
+        獲取歷史K線數據
+
+        Args:
+            symbol (str): 交易對名稱
+            interval (str): 時間間隔，如 "1m", "5m", "1h", "1d" 等
+            limit (int, optional): 數量限制。若與 since 同時存在，則從 since 開始最多取 limit 根
+            closed (bool, optional): 是否只獲取已關閉的K線。默認為True
+            show (bool, optional): 是否顯示獲取進度。默認為False
+            since (int, optional): 從這個時間戳（毫秒）開始取得K線資料
+
+        Returns:
+            list: K線數據列表
+
+        Raises:
+            Exception: 獲取歷史數據失敗時拋出異常
+        """
+        if self.back_data is None:
+            raise ValueError("Data not initialized. Please call update_data() first.")
+        
+        if symbol not in self.back_data:
+            raise ValueError(f"Symbol {symbol} not found in data.")
+        
+        if interval not in self.back_data[symbol]:
+            raise ValueError(f"Interval {interval} not found for symbol {symbol}.")
+        
+        # 獲取指定時間間隔的數據
+        historical_data = self.back_data[symbol][interval]
+        if since is not None:
+            # 如果指定了 since，則從 since 開始取數據
+            historical_data = [data for data in historical_data if data[0] >= since]
+            
+        if limit is not None:
+            # 如果指定了 limit，則只取最後 limit 根數據
+            historical_data = historical_data[-limit:]
+            
+        if not closed:
+            print("Warning: 'closed' parameter is not supported in backtesting mode. All data will be returned regardless of whether the candles are closed or not.")
+        
+        return historical_data
+    
+    def check_symbol_availability(self, symbol: str) -> bool:
+        """
+        檢查交易對是否可用
+        
+        Args:
+            symbol (str): 交易對名稱
+        Returns:
+            bool: 如果交易對可用，返回True，否則返回False
+        """
+        if self.data is None:
+            raise ValueError("Data not initialized. Please call update_data() first.")
+        
+        return symbol in self.data
+    
+    
     # -------------------- Backtesting Methods --------------------
-    def update_data(self, data: Dict[str, Any]) -> None:
+    def update_data(self, data: Dict[str, Any], back_data: Optional[Dict[str, Any]] = None) -> None:
         """
         檢查止盈/止損/爆倉是否觸發，並更新回測資料。
         
@@ -332,6 +399,8 @@ class BackTestFutures:
         
         # 更新資料
         self.data = data
+        if back_data is not None:
+            self.back_data = back_data
         
         timestamp = self.data["timestamp"] / 1000 # timestamp 是毫秒級別，要轉換為秒級別
         dt = datetime.fromtimestamp(timestamp, self.timezone)

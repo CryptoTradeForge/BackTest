@@ -151,12 +151,13 @@ class BackDataAcquisition:
                     result[field] = float(data_point[field_idx])
         return result
     
-    def acquire_single_symbol_data(self, data, timestamp, limit=1000, force_binary_search=False):
+    def acquire_single_symbol_data(self, symbol, data, timestamp, limit=None, force_binary_search=False):
         """
         Acquire historical data for a single symbol for backtesting.
         Uses incremental indexing for efficient sequential timestamp lookups.
 
         Args:
+            symbol (str): The trading symbol (used for caching).
             data (dict): The historical data for a single symbol.
             
             data should be structured as follows:
@@ -167,7 +168,8 @@ class BackDataAcquisition:
             }
             
             timestamp (str or int): The timestamp for the data.
-            limit (int): The maximum number of historical data points to acquire.
+            limit (int, optional): The maximum number of historical data points to acquire.
+                                 If None, returns all data from the beginning to timestamp.
             force_binary_search (bool): If True, use binary search instead of incremental search.
                                       Default is False for optimal performance during sequential backtesting.
             
@@ -176,7 +178,7 @@ class BackDataAcquisition:
                 - current_data: The current data for the symbol at the specified timestamp.
                               Contains timestamp and specified fields (open, high, low by default).
                 - fetched_data: The historical data fetched for the symbol and timeframes (excluding current data).
-                              Limited by the 'limit' parameter for each timeframe.
+                              Limited by the 'limit' parameter for each timeframe, or all data if limit is None.
         """
         # Validate fields
         self._validate_fields(self.fields)
@@ -185,7 +187,7 @@ class BackDataAcquisition:
         current_data = {"timestamp": timestamp}
         
         for timeframe, timeframe_data in data.items():
-            cache_key = f"single_{timeframe}"
+            cache_key = f"single_{symbol}_{timeframe}"
             
             # Find the last data point with timestamp <= target timestamp
             final_timestamp_idx = self._find_timestamp_index(
@@ -201,7 +203,12 @@ class BackDataAcquisition:
             
             # Fetch historical data (excluding current data point)
             if final_timestamp_idx >= 0:
-                start_idx = max(0, final_timestamp_idx - limit)
+                if limit is None:
+                    # Return all data from beginning to timestamp (excluding current data point)
+                    start_idx = 0
+                else:
+                    # Return limited data based on limit parameter
+                    start_idx = max(0, final_timestamp_idx - limit)
                 end_idx = final_timestamp_idx
                 fetched_data[timeframe] = timeframe_data[start_idx:end_idx]
             else:
@@ -209,7 +216,7 @@ class BackDataAcquisition:
         
         return current_data, fetched_data
     
-    def acquire_data(self, data, timestamp, limit=1000, force_binary_search=False):
+    def acquire_data(self, data, timestamp, limit=None, force_binary_search=False):
         """
         Acquire historical data for multiple symbols for backtesting.
         Uses incremental indexing for efficient sequential timestamp lookups.
@@ -231,7 +238,8 @@ class BackDataAcquisition:
             }
             
             timestamp (str or int): The timestamp for the data.
-            limit (int): The maximum number of historical data points to acquire per symbol per timeframe.
+            limit (int, optional): The maximum number of historical data points to acquire per symbol per timeframe.
+                                 If None, returns all data from the beginning to timestamp.
             force_binary_search (bool): If True, use binary search instead of incremental search.
                                       Default is False for optimal performance during sequential backtesting.
             
@@ -240,7 +248,7 @@ class BackDataAcquisition:
                 - current_data: The current data for each symbol at the specified timestamp.
                               Contains timestamp and for each symbol: specified fields (open, high, low by default).
                 - fetched_data: The historical data fetched for each symbol and timeframe (excluding current data).
-                              Limited by the 'limit' parameter for each symbol and timeframe.
+                              Limited by the 'limit' parameter for each symbol and timeframe, or all data if limit is None.
         """
         # Validate fields
         self._validate_fields(self.fields)
@@ -268,7 +276,12 @@ class BackDataAcquisition:
                 
                 # Fetch historical data (excluding current data point)
                 if final_timestamp_idx >= 0:
-                    start_idx = max(0, final_timestamp_idx - limit)
+                    if limit is None:
+                        # Return all data from beginning to timestamp (excluding current data point)
+                        start_idx = 0
+                    else:
+                        # Return limited data based on limit parameter
+                        start_idx = max(0, final_timestamp_idx - limit)
                     end_idx = final_timestamp_idx
                     fetched_data[symbol][timeframe] = timeframe_data[start_idx:end_idx]
                 else:
