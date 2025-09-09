@@ -34,6 +34,8 @@ class BackTestFutures:
             self.profit_record_path.parent.mkdir(parents=True, exist_ok=True)
             if not self.profit_record_path.exists():
                 self.need_initialize = True
+            else:
+                self.need_initialize = False
         else:
             # 儲存路徑： "{profit_record_folder}/profits_{i}.csv"
             # 如果編號 i 的檔案已存在，則會自動增加編號
