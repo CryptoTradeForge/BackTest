@@ -13,7 +13,7 @@ class BackTestFutures:
         self, 
         initial_balance: float = 1000.0,
         profit_record_path: str = None,
-        profit_record_folder = "BackTest/profit_record",
+        profit_record_folder = "data/backtest_profit_record",
         show_info: bool = False
     ):
         """

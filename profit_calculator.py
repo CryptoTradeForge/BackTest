@@ -146,7 +146,7 @@ class ProfitCalculator:
         }
     
     
-    def calculate_profit_path(self, profit_record_path: str = None, profit_record_folder: str = "BackTest/profit_record"):
+    def calculate_profit_path(self, profit_record_path: str = None, profit_record_folder: str = "data/backtest_profit_record"):
         
         # 如果 profit_record_path 已經指定，則直接使用它
         # 否則則使用預設的 profit_record_folder
@@ -161,7 +161,7 @@ class ProfitCalculator:
         return self.calculate_profit(profits_detail)
     
     
-    def analyze_symbol(self, symbol: str, profit_record_path: str = None, profit_record_folder: str = "BackTest/profit_record", show_plot: bool = True):
+    def analyze_symbol(self, symbol: str, profit_record_path: str = None, profit_record_folder: str = "data/backtest_profit_record", show_plot: bool = True):
         """
         分析單一交易對的利潤情況
         :param symbol: 交易對名稱
@@ -184,7 +184,7 @@ class ProfitCalculator:
         return self.calculate_profit(symbol_profits, show_plot=show_plot)
     
     
-    def analyze_symbols(self, profit_record_path: str = None, profit_record_folder: str = "BackTest/profit_record", show_plot: bool = False):
+    def analyze_symbols(self, profit_record_path: str = None, profit_record_folder: str = "data/backtest_profit_record", show_plot: bool = False):
         
         if not profit_record_path:
             profit_record_path = self._get_latest_profit_record_path(profit_record_folder)
