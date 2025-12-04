@@ -197,6 +197,7 @@ class BackDataAcquisition:
     def acquire_single_symbol_data(self, symbol, data, timestamp, limit=None, force_binary_search=False):
         """
         Optimized version of acquire_single_symbol_data.
+        小 bug: limit 需隨 timeframes 調整，否則高 timeframe 可能資料不夠，但反正底下有防呆，現在懶得改。 
         """
         self._validate_fields(self.fields)
         
@@ -236,6 +237,7 @@ class BackDataAcquisition:
     def acquire_data(self, data, timestamp, limit=None, force_binary_search=False):
         """
         Optimized version of acquire_data.
+        小 bug: limit 需隨 timeframes 調整，否則高 timeframe 可能資料不夠，但反正底下有防呆，現在懶得改。 
         """
         self._validate_fields(self.fields)
         
